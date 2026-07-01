@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>夢幻一番賞抽獎</title>
+    <style>
+        /* 配色定義：寧靜藍 #92A8D1, 石英粉 #F7CAC9, 淡雅白 #F4F6F9 */
+        :root {
+            --serenity-blue: #92A8D1;
+            --rose-quartz: #F7CAC9;
+            --elegant-white: #F4F6F9;
+            --dark-text: #5A6B7C;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--rose-quartz), var(--serenity-blue));
+            margin: 0;
+            padding: 20px;
+            color: var(--dark-text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #fff;
+            text-shadow: 1px 1px 5px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+        }
+
+        /* 控制面板 */
+        .admin-panel, .user-panel {
+            background: rgba(255, 255, 255, 0.85);
+            padding: 15px 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            width: 90%;
+            max-width: 500px;
+            backdrop-filter: blur(5px);
+        }
+
+        .admin-panel h3, .user-panel h3 {
+            margin-top: 0;
+            color: var(--serenity-blue);
+            border-bottom: 2px solid var(--rose-quartz);
+            padding-bottom: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        input, select, button {
+            padding: 8px 12px;
+            border: 1px solid var(--serenity-blue);
+            border-radius: 8px;
+            outline: none;
+        }
+
+        button {
+            background-color: var(--serenity-blue);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: #7b93c2;
+            transform: translateY(-1px);
+        }
+
+        /* 剩餘獎項儀表板 */
+        .pool-dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .pool-item {
+            background: var(--elegant-white);
+            padding: 5px;
+            text-align: center;
+            border-radius: 5px;
+            border: 1px solid #e0e0e0;
+        }
+
+        /* 玻璃抽獎箱 */
+        .lottery-box-container {
+            position: relative;
+            width: 300px;
+            height: 250px;
+            margin: 20px 0;
+        }
+
+        .glass-box {
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.25);
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        /* 箱子內部的抽獎券 */
+        .ticket-in-box {
+            position: absolute;
+            width: 40px;
+            height: 25px;
+            background: var(--rose-quartz);
+            border: 1px solid #fff;
+            border-radius: 3px;
+            opacity: 0.8;
+            transform: rotate(15deg);
+            transition: transform 0.5s ease;
+        }
+
+        /* 抽獎按鈕 */
+        .draw-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 15px 30px;
+            font-size: 18px;
+            background-color: rgba(247, 202, 201, 0.9);
+            color: #5A6B7C;
+            border: 2px solid #fff;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        /* 隨機動畫 */
+        @keyframes shake {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            20% { transform: translate(-5px, 5px) rotate(-5deg); }
+            40% { transform: translate(5px, -5px) rotate(5deg); }
+            60% { transform: translate(-5px, -5px) rotate(-3deg); }
+            80% { transform: translate(5px, 5px) rotate(3deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+        .shaking {
+            animation: shake 0.5s ease-in-out infinite;
+        }
+
+        /* 撕開獎券的彈出視窗 Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* 獎券本體 */
+        .ticket-card {
+            width: 320px;
+            height: 200px;
+            background: var(--elegant-white);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* 撕開層 (Cover) */
+        .ticket-cover {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(45deg, var(--serenity-blue), var(--rose-quartz));
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            z-index: 2;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+        }
+        .ticket-cover span {
+            font-size: 12px;
+            margin-top: 10px;
+            animation: pulse 1s infinite alternate;
+        }
+        @keyframes pulse { 0% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* 撕開後的動畫效果 */
+        .ticket-card.ripped .ticket-cover {
+            transform: translateY(-100%); /* 往上滑開模擬撕開 */
+        }
+
+        /* 獎項內容層 */
+        .ticket-content {
+            text-align: center;
+            color: #fff;
+            z-index: 1;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+        }
+        .prize-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .prize-note {
+            font-size: 16px;
+            margin-top: 5px;
+        }
+
+        /* A賞特殊特效動畫 */
+        @keyframes flash {
+            0%, 100% { box-shadow: 0 0 20px #fff, 0 0 30px #ffd700; }
+            50% { box-shadow: 0 0 40px #fff, 0 0 60px #ff8c00; }
+        }
+        .special-a {
+            animation: flash 0.8s infinite;
+            border: 4px solid #ffd700;
+        }
+
+        .close-modal-btn {
+            margin-top: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>✨ 夢幻一番賞抽獎箱 ✨</h1>
+
+    <div class="admin-panel">
+        <h3>⚙️ 活動天數與數量設定</h3>
+        <div class="form-group">
+            <label for="day-select">選擇活動天數：</label>
+            <select id="day-select" onchange="switchDay()">
+                <option value="1">第一天 (1/3 數量)</option>
+                <option value="2">第二天 (1/3 數量)</option>
+                <option value="3">第三天 (1/3 數量)</option>
+            </select>
+        </div>
+        <div><strong>當天剩餘獎項：</strong></div>
+        <div class="pool-dashboard" id="pool-display">
+            </div>
+    </div>
+
+    <div class="user-panel">
+        <h3>👤 抽獎人資訊</h3>
+        <div class="form-group">
+            <label for="user-sn">請輸入您的序號：</label>
+            <input type="text" id="user-sn" placeholder="例如: SN9527" value="SN001">
+        </div>
+        <div class="form-group">
+            <button onclick="loginUser()">切換/登入序號</button>
+            <span id="user-status">目前抽獎次數：0 / 5</span>
+        </div>
+    </div>
+
+    <div class="lottery-box-container">
+        <div class="glass-box" id="glass-box">
+            <div class="ticket-in-box" style="top:20%; left:15%; transform:rotate(20deg);"></div>
+            <div class="ticket-in-box" style="top:50%; left:40%; transform:rotate(-15deg); background:#92A8D1;"></div>
+            <div class="ticket-in-box" style="top:70%; left:20%; transform:rotate(45deg);"></div>
+            <div class="ticket-in-box" style="top:30%; left:70%; transform:rotate(-30deg);"></div>
+            <div class="ticket-in-box" style="top:65%; left:65%; transform:rotate(10deg); background:#92A8D1;"></div>
+        </div>
+        <button class="draw-btn" onclick="drawPrize()">試試手氣！</button>
+    </div>
+
+    <div class="modal-overlay" id="modal-overlay">
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <div class="ticket-card" id="ticket-card">
+                <div class="ticket-cover" id="ticket-cover" onclick="ripTicket()">
+                    <div>一番賞 抽獎券</div>
+                    <span>👉 點擊此處撕開 👈</span>
+                </div>
+                <div class="ticket-content">
+                    <div class="prize-title" id="prize-name">? 賞</div>
+                    <div class="prize-note" id="prize-desc">恭喜中獎！</div>
+                </div>
+            </div>
+            <button class="close-modal-btn" id="close-modal-btn" onclick="closeModal()">收下獎項</button>
+        </div>
+    </div>
+
+    <script>
+        // 音效產生器
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playSound(type) {
+            if (type === 'normal') {
+                // 普通撕開音效（沙沙聲轉嗶聲）
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'specialA') {
+                // A賞特殊音效：連續歡樂音效
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, index) => {
+                    let osc = audioCtx.createOscillator();
+                    let gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + index * 0.1);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime + index * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + index * 0.1 + 0.3);
+                    osc.start(audioCtx.currentTime + index * 0.1);
+                    osc.stop(audioCtx.currentTime + index * 0.1 + 0.3);
+                });
+            }
+        }
+    </script>
+
+    <script>
+        // 1. 總獎項資料庫（依需求分配，會除以 3 天）
+        const totalPrizeTemplate = { 'A': 3, 'B': 6, 'C': 24, 'D': 24, 'E': 30, 'F': 30, 'G': 60 };
+        
+        // 隨機一般背景圖片陣列（使用 Unsplash 漂亮漸層或風景圖代替）
+        const normalBackgrounds = [
+            'url("https://images.unsplash.com/photo-1557683316-973673baf926?w=400")',
+            'url("https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=400")',
+            'url("https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=400")',
+            'url("https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=400")'
+        ];
+        
+        // A賞特殊圖片
+        const specialABackground = 'url("https://images.unsplash.com/photo-1513151233558-d860c5398176?w=400")'; // 絢麗派對金色感圖片
+
+        // 初始化三天各自的獎池
+        let poolData = {
+            1: {}, 2: {}, 3: {}
+        };
+        
+        // 平均分配到三天
+        for (let prize in totalPrizeTemplate) {
+            let perDay = totalPrizeTemplate[prize] / 3;
+            poolData[1][prize] = perDay;
+            poolData[2][prize] = perDay;
+            poolData[3][prize] = perDay;
+        }
+
+        // 紀錄使用者的抽獎次數與歷史
+        // 格式： { 'SN001': { count: 0, history: [] } }
+        let userRegistry = {};
+
+        let currentDay = 1;
+        let currentDrawUser = 'SN001';
+        let currentDrawnPrize = null; // 暫存剛剛抽到的獎
+
+        // 初始化網頁面貌
+        function init() {
+            switchDay();
+            updateUserStatus();
+        }
+
+        // 切換天數
+        function switchDay() {
+            currentDay = parseInt(document.getElementById('day-select').value);
+            renderPoolDashboard();
+        }
+
+        // 更新剩餘獎項儀表板
+        function renderPoolDashboard() {
+            const display = document.getElementById('pool-display');
+            display.innerHTML = '';
+            let currentPool = poolData[currentDay];
+            for (let prize in currentPool) {
+                let item = document.createElement('div');
+                item.className = 'pool-item';
+                item.innerHTML = `<strong>${prize}賞</strong><br>${currentPool[prize]}個`;
+                display.appendChild(item);
+            }
+        }
+
+        // 登入/切換序號
+        function loginUser() {
+            const snInput = document.getElementById('user-sn').value.trim();
+            if(!snInput) {
+                alert('請輸入有效的序號！');
+                return;
+            }
+            currentDrawUser = snInput;
+            if(!userRegistry[currentDrawUser]) {
+                userRegistry[currentDrawUser] = { count: 0, history: [] };
+            }
+            updateUserStatus();
+            alert(`已切換至序號: ${currentDrawUser}`);
+        }
+
+        // 更新畫面上的使用者狀態
+        function updateUserStatus() {
+            if(!userRegistry[currentDrawUser]) {
+                userRegistry[currentDrawUser] = { count: 0, history: [] };
+            }
+            let u = userRegistry[currentDrawUser];
+            document.getElementById('user-status').innerText = `目前抽獎次數：${u.count} / 5 (歷史: ${u.history.join(',') || '無'})`;
+        }
+
+        // 執行抽獎邏輯
+        function drawPrize() {
+            let u = userRegistry[currentDrawUser];
+            
+            // 檢查是否超過 5 次
+            if (u.count >= 5) {
+                alert(`序號 ${currentDrawUser} 已達到最大限制 5 次，無法再抽獎！`);
+                return;
+            }
+
+            // 檢查當天獎池是否空了
+            let currentPool = poolData[currentDay];
+            let totalAvailable = Object.values(currentPool).reduce((a, b) => a + b, 0);
+            if (totalAvailable <= 0) {
+                alert(`第 ${currentDay} 天的獎項已經被抽光囉！請聯繫管理員切換天數。`);
+                return;
+            }
+
+            // 搖晃抽獎箱特效
+            const box = document.getElementById('glass-box');
+            box.classList.add('shaking');
+
+            setTimeout(() => {
+                box.classList.remove('shaking');
+                executeDrawLogic(u, currentPool);
+            }, 600);
+        }
+
+        // 核心抽獎與保底計算
+        function executeDrawLogic(user, pool) {
+            user.count++;
+            let drawnPrize = '';
+
+            // 【保底機制判斷】
+            // 如果這是第 5 次抽，且前 4 次都沒有中過 A, B, C 賞
+            let hasGrandPrize = user.history.some(p => ['A', 'B', 'C'].includes(p));
+            let isGuaranteed = (user.count === 5 && !hasGrandPrize);
+
+            // 建立隨機抽獎池陣列
+            let availableList = [];
+            for (let prize in pool) {
+                if (pool[prize] > 0) {
+                    // 如果是保底狀態，抽獎池內只能放入 A, B, C
+                    if (isGuaranteed) {
+                        if (['A', 'B', 'C'].includes(prize)) {
+                            for (let i = 0; i < pool[prize]; i++) availableList.push(prize);
+                        }
+                    } else {
+                        // 正常狀況，放入所有剩餘獎項
+                        for (let i = 0; i < pool[prize]; i++) availableList.push(prize);
+                    }
+                }
+            }
+
+            // 防呆：如果第5次保底時，當天池子裡剛好沒有 A B C 賞了（機率極低，但要做防禦），就降格為全池抽樣
+            if (availableList.length === 0) {
+                for (let prize in pool) {
+                    if (pool[prize] > 0) {
+                        for (let i = 0; i < pool[prize]; i++) availableList.push(prize);
+                    }
+                }
+                isGuaranteed = false; // 取消保底標記
+            }
+
+            // 隨機抽取一個
+            let randomIndex = Math.floor(Math.random() * availableList.length);
+            drawnPrize = availableList[randomIndex];
+
+            // 扣除獎池數量、紀錄使用者歷史
+            pool[drawnPrize]--;
+            user.history.push(drawnPrize);
+            currentDrawnPrize = drawnPrize;
+
+            // 如果成功保底，彈出小提示
+            if (isGuaranteed) {
+                console.log("觸發第5次保底機制！");
+            }
+
+            // 更新介面
+            renderPoolDashboard();
+            updateUserStatus();
+
+            // 準備彈出撕開驚喜視窗
+            openRipModal(drawnPrize);
+        }
+
+        // 開啟撕開視窗
+        function openRipModal(prize) {
+            const overlay = document.getElementById('modal-overlay');
+            const card = document.getElementById('ticket-card');
+            const pName = document.getElementById('prize-name');
+            const pDesc = document.getElementById('prize-desc');
+            const closeBtn = document.getElementById('close-modal-btn');
+
+            // 重置卡片狀態（蓋上）
+            card.classList.remove('ripped', 'special-a');
+            closeBtn.style.display = 'none';
+
+            // 先設定撕開後的內容與背景
+            pName.innerText = `${prize} 賞`;
+            
+            if (prize === 'A') {
+                card.style.backgroundImage = specialABackground;
+                pDesc.innerText = '✨ 歐氣爆發！恭喜獲得至高無上 A 賞！ ✨';
+            } else {
+                // 隨機挑選一張普通背景圖片
+                let randBg = normalBackgrounds[Math.floor(Math.random() * normalBackgrounds.length)];
+                card.style.backgroundImage = randBg;
+                pDesc.innerText = `恭喜獲得 ${prize} 賞商品一份！`;
+            }
+
+            // 顯示遮罩層
+            overlay.classList.add('active');
+        }
+
+        // 點擊撕開
+        function ripTicket() {
+            const card = document.getElementById('ticket-card');
+            if(card.classList.contains('ripped')) return; // 防止重複點擊
+
+            card.classList.add('ripped');
+
+            // 依照獎項播放特效與音效
+            if (currentDrawnPrize === 'A') {
+                card.classList.add('special-a');
+                playSound('specialA');
+            } else {
+                playSound('normal');
+            }
+
+            // 延遲顯示「收下獎項」按鈕
+            setTimeout(() => {
+                document.getElementById('close-modal-btn').style.display = 'block';
+            }, 600);
+        }
+
+        // 關閉視窗
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('active');
+        }
+
+        // 網頁載入時啟動初始化
+        window.onload = init;
+    </script>
+</body>
+</html>
